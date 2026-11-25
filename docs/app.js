@@ -18,7 +18,7 @@
   const MAX_HIST = 5000;        // límite de lecturas guardadas para el CSV
 
   const $ = (id) => document.getElementById(id);
-  let client = null, ultimo = null, ultimoVisto = 0, alertaPrev = false, alertas = 0;
+  let client = null, ultimo = null, ultimoVisto = 0, alertaPrev = false, alertas = 0, alertaTempPrev = false, alertasTemp = 0;
   let hist = [], timerInactividad = null, timerToast = null;
 
   // ---------------- Utilidades ----------------
@@ -162,7 +162,7 @@
 
   function cerrarSesion(motivo) {
     if (client) { client.end(true); client = null; }
-    hist = []; ultimo = null; ultimoVisto = 0; alertas = 0; alertaPrev = false;
+    hist = []; ultimo = null; ultimoVisto = 0; alertas = 0; alertaPrev = false; alertasTemp = 0; alertaTempPrev = false;
     $("log").replaceChildren();
     $("vistaApp").hidden = true;
     $("vistaLogin").hidden = false;
@@ -186,6 +186,7 @@
       voltaje: num(raw.voltaje), corriente: num(raw.corriente), potencia: num(raw.potencia),
       energia_wh: num(raw.energia_wh), limite: num(raw.limite), rssi: num(raw.rssi),
       carga_activa: raw.carga_activa === true, alerta: raw.alerta === true,
+      limite_temp: num(raw.limite_temp), alerta_temp: raw.alerta_temp === true,
       modo: raw.modo === "MANUAL" ? "MANUAL" : "AUTO",
       alerta_motivo: raw.alerta_motivo === "sensor" ? "sensor" : "sobreconsumo",
       sensor_electrico: raw.sensor_electrico !== false,
@@ -200,6 +201,24 @@
     $("vVol").textContent = fmt(d.voltaje, 2, "V");
     $("vEne").textContent = fmt(d.energia_wh, 4, "Wh");
     $("vTem").textContent = fmt(d.temperatura, 1, "°C");
+    $("dTem").textContent = d.limite_temp !== null ? "límite " + d.limite_temp.toFixed(1) + " °C" : "";
+    $("kTem").classList.toggle("calor", d.alerta_temp);
+    if (document.activeElement !== $("iLimT") && d.limite_temp !== null) $("iLimT").value = d.limite_temp;
+
+    // Alerta de temperatura
+    const bT = $("bannerTemp");
+    if (d.alerta_temp) {
+      bT.textContent = "Temperatura alta: " + fmt(d.temperatura, 1, "°C") + " supera el límite de " + fmt(d.limite_temp, 1, "°C") + ".";
+      bT.hidden = false;
+    } else bT.hidden = true;
+    if (d.alerta_temp && !alertaTempPrev) {
+      alertasTemp++;
+      log(`ALERTA: temperatura ${fmt(d.temperatura, 1, "°C")} > límite ${fmt(d.limite_temp, 1, "°C")}`, "mal");
+      toast("Temperatura alta: " + fmt(d.temperatura, 1, "°C"), true);
+    } else if (!d.alerta_temp && alertaTempPrev) {
+      log("Temperatura normalizada", "ok");
+    }
+    alertaTempPrev = d.alerta_temp;
     $("vHum").textContent = fmt(d.humedad, 1, "%");
     const excede = d.potencia !== null && d.limite !== null && d.potencia > d.limite;
     $("kPot").classList.toggle("excede", excede);
@@ -243,6 +262,7 @@
     $("rProm").textContent = pots.length ? fmt(pots.reduce((a, b) => a + b, 0) / pots.length, 3, "W") : "--";
     $("rMax").textContent = pots.length ? fmt(Math.max(...pots), 3, "W") : "--";
     $("rAl").textContent = alertas;
+    $("rAlT").textContent = alertasTemp;
     $("rTem").textContent = tems.length ? fmt(tems.reduce((a, b) => a + b, 0) / tems.length, 1, "°C") : "--";
     $("rRssi").textContent = d.rssi === null ? "--" : d.rssi + " dBm";
     $("rFw").textContent = d.fw;
@@ -298,7 +318,7 @@
     if ($("vistaApp").hidden) return;
     const h = hist.slice(-MAX_PUNTOS);
     grafica($("chPot"), [{ data: h.map((r) => r.potencia), cls: "s-pot", area: true }], ultimo ? ultimo.limite : null);
-    grafica($("chAmb"), [{ data: h.map((r) => r.temperatura), cls: "s-tem" }, { data: h.map((r) => r.humedad), cls: "s-hum" }]);
+    grafica($("chAmb"), [{ data: h.map((r) => r.temperatura), cls: "s-tem" }, { data: h.map((r) => r.humedad), cls: "s-hum" }], ultimo ? ultimo.limite_temp : null);
   }
   const ro = new ResizeObserver(dibujar);
   ro.observe($("chPot")); ro.observe($("chAmb"));
@@ -324,11 +344,18 @@
     enviar("LIMITE:" + v.toFixed(3), "límite " + v + " W");
   });
   $("iLim").addEventListener("input", () => { $("limError").textContent = ""; });
+  $("bLimT").addEventListener("click", () => {
+    const v = parseFloat($("iLimT").value);
+    if (!(v >= 0 && v <= 60)) { $("limTError").textContent = "Ingresen un valor entre 0 y 60 °C."; return; }
+    $("limTError").textContent = "";
+    enviar("LIMTEMP:" + v.toFixed(1), "límite de temperatura " + v + " °C");
+  });
+  $("iLimT").addEventListener("input", () => { $("limTError").textContent = ""; });
 
   // ---------------- CSV ----------------
   $("bCsv").addEventListener("click", () => {
     if (!hist.length) { toast("Todavía no hay lecturas", true); return; }
-    const cols = ["hora", "voltaje", "corriente", "potencia", "energia_wh", "limite", "temperatura", "humedad", "carga_activa", "modo", "alerta"];
+    const cols = ["hora", "voltaje", "corriente", "potencia", "energia_wh", "limite", "temperatura", "humedad", "carga_activa", "modo", "alerta", "limite_temp", "alerta_temp"];
     const filas = hist.map((r) => cols.map((c) => (r[c] === null || r[c] === undefined ? "" : String(r[c]))).join(","));
     const csv = [cols.join(",")].concat(filas).join("\n");
     const a = document.createElement("a");

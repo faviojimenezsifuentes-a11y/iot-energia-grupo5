@@ -33,7 +33,7 @@ flowchart LR
 | Tema MQTT | Dirección | Contenido |
 |---|---|---|
 | `grupo5iot/vivienda/energia/datos` | ESP32 → dashboard | Mediciones en JSON cada 2 s (retenido) |
-| `grupo5iot/vivienda/energia/control` | dashboard → ESP32 | `ON`, `OFF`, `AUTO`, `MANUAL`, `LIMITE:<W>`, `RESET_ENERGIA` |
+| `grupo5iot/vivienda/energia/control` | dashboard → ESP32 | `ON`, `OFF`, `AUTO`, `MANUAL`, `LIMITE:<W>`, `LIMTEMP:<°C>`, `RESET_ENERGIA` |
 | `grupo5iot/vivienda/energia/ack` | ESP32 → dashboard | Confirmación o rechazo de cada comando |
 | `grupo5iot/vivienda/energia/estado` | ESP32 → dashboard | `online` / `offline` (Last Will) |
 
@@ -46,6 +46,7 @@ flowchart LR
 | RF03 Transmisión inalámbrica | Wi-Fi + MQTT sobre TLS hacia un broker privado (EMQX Cloud) |
 | RF04 Visualización | Dashboard web con maqueta animada, indicadores, gráficas y reporte |
 | RF05/RF06 Sobreconsumo y alertas | Promedio móvil de potencia (arreglo de 3 lecturas) comparado con un límite configurable; alerta visual (LED + dashboard) e historial |
+| Alerta de temperatura | Límite configurable desde el dashboard (30 °C por defecto); alerta en el dashboard y LED con histéresis de 0,5 °C |
 | RF07 Control de dispositivos | Encender/apagar la luz desde el dashboard con confirmación (ACK) |
 | RF08 Automatización | Modo automático: corta la carga al superar el límite, incluso sin internet |
 | RNF06 Seguridad | Ver [SECURITY.md](SECURITY.md) |

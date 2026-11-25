@@ -81,6 +81,8 @@ main { max-width: 1240px; margin: 0 auto; padding: 20px max(4vw, 16px) 48px; dis
 .tarjeta { background: var(--tarjeta); border: 1px solid var(--linea); border-radius: var(--radio); padding: 18px; }
 .tarjeta-cab { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; align-items: baseline; }
 .banner { background: var(--mal); color: #fff; padding: 14px 18px; border-radius: var(--radio); font-weight: 600; }
+.banner.calor { background: #e8590c; }
+.kpi.calor b { color: #e8590c; }
 
 /* Hero: casa + KPIs */
 .hero { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 18px; }

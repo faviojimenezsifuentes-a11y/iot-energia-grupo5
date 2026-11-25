@@ -58,6 +58,7 @@
 
   <main>
     <div id="bannerAlerta" class="banner" role="alert" hidden></div>
+    <div id="bannerTemp" class="banner calor" role="alert" hidden></div>
 
     <section class="hero">
       <div class="tarjeta maqueta">
@@ -92,7 +93,7 @@
         <div class="kpi"><span class="etq">Corriente</span><b id="vCor">--</b></div>
         <div class="kpi"><span class="etq">Voltaje</span><b id="vVol">--</b></div>
         <div class="kpi"><span class="etq">Energía acumulada</span><b id="vEne">--</b></div>
-        <div class="kpi"><span class="etq">Temperatura</span><b id="vTem">--</b></div>
+        <div class="kpi" id="kTem"><span class="etq">Temperatura</span><b id="vTem">--</b><small id="dTem"></small></div>
         <div class="kpi"><span class="etq">Humedad</span><b id="vHum">--</b></div>
       </div>
     </section>
@@ -123,6 +124,13 @@
         </div>
         <p id="limError" class="error"></p>
 
+        <label class="etq" for="iLimT">Límite de temperatura (°C)</label>
+        <div class="fila">
+          <input id="iLimT" type="number" min="0" max="60" step="0.5" inputmode="decimal">
+          <button id="bLimT" class="btn">Fijar</button>
+        </div>
+        <p id="limTError" class="error"></p>
+
         <button id="bReset" class="btn sutil">Reiniciar energía acumulada</button>
         <p class="nota">En automático la luz se apaga sola al superar el límite. Para reactivarla, pulsen “Encender”.</p>
       </div>
@@ -130,7 +138,7 @@
 
     <section class="rejilla">
       <div class="tarjeta">
-        <div class="tarjeta-cab"><h2>Condiciones ambientales</h2><span class="leyenda"><i class="l-tem"></i>Temperatura °C <i class="l-hum"></i>Humedad %</span></div>
+        <div class="tarjeta-cab"><h2>Condiciones ambientales</h2><span class="leyenda"><i class="l-tem"></i>Temperatura °C <i class="l-hum"></i>Humedad % <i class="l-lim"></i>Límite temp.</span></div>
         <div class="fig"><svg id="chAmb"></svg></div>
       </div>
 
@@ -141,6 +149,7 @@
           <tr><td>Potencia promedio</td><td id="rProm">--</td></tr>
           <tr><td>Potencia máxima</td><td id="rMax">--</td></tr>
           <tr><td>Alertas de sobreconsumo</td><td id="rAl">0</td></tr>
+          <tr><td>Alertas de temperatura</td><td id="rAlT">0</td></tr>
           <tr><td>Temperatura promedio</td><td id="rTem">--</td></tr>
           <tr><td>Señal Wi-Fi</td><td id="rRssi">--</td></tr>
           <tr><td>Firmware</td><td id="rFw">--</td></tr>

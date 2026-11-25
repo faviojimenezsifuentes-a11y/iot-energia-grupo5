@@ -3,7 +3,7 @@
 //  CONFIGURACIÓN DEL SISTEMA (sin datos secretos)
 // =====================================================================
 
-#define FIRMWARE_VERSION "2.1.0"
+#define FIRMWARE_VERSION "2.2.0"
 
 // ---------- Pines ----------
 #define DHT_PIN      4      // DATA del DHT22
@@ -28,6 +28,10 @@
 #define LIMITE_INICIAL_W     0.30f   // límite de potencia al arrancar
 #define LIMITE_MIN_W         0.01f   // rango permitido para cambios desde el dashboard
 #define LIMITE_MAX_W         50.0f
+#define LIMITE_TEMP_INICIAL_C 30.0f  // alerta si la temperatura supera este valor
+#define LIMITE_TEMP_MIN_C     0.0f
+#define LIMITE_TEMP_MAX_C     60.0f   // rango de medición útil del DHT22 en la maqueta
+#define HISTERESIS_TEMP_C     0.5f    // la alerta se apaga 0,5 °C por debajo del límite
 #define INTERVALO_MS         2000    // lectura y publicación
 #define N_MUESTRAS           3       // tamaño del promedio móvil de potencia (3 x 2 s)
 #define CMD_MIN_INTERVALO_MS 300     // anti-spam: tiempo mínimo entre comandos

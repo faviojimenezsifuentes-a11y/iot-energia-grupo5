@@ -1,12 +1,13 @@
 /*
   =====================================================================
    Sistema IoT de monitoreo y control del consumo energético
-   IoT Grupo 5 — ESP32 + INA219 + DHT22 + Relé          Firmware v2.0
+   IoT Grupo 5 — ESP32 + INA219 + DHT22 + Relé          Firmware v2.2
   =====================================================================
    Funciones
    - Mide voltaje, corriente y potencia (INA219) y temperatura/humedad (DHT22)
    - Publica las mediciones cada 2 s por MQTT sobre TLS a un broker privado (EMQX Cloud)
    - Detecta sobreconsumo y, en modo AUTO, corta la carga con el relé
+   - Alerta cuando la temperatura supera un límite configurable desde el dashboard
    - Recibe comandos del dashboard y responde con un acuse (ACK)
 
    Seguridad
@@ -52,6 +53,8 @@ bool  alerta         = false;
 const char* motivoAlerta = "";
 bool  inaOk          = false;
 float limitePotencia = LIMITE_INICIAL_W;
+float limiteTemperatura = LIMITE_TEMP_INICIAL_C;
+bool  alertaTemp     = false;
 float energiaWh      = 0.0f;
 
 unsigned long ultimaLectura       = 0;
@@ -86,6 +89,7 @@ void reiniciarPromedio() {
 
 bool esComandoPermitido(const char* cmd) {
   if (strncmp(cmd, "LIMITE:", 7) == 0) return true;
+  if (strncmp(cmd, "LIMTEMP:", 8) == 0) return true;
   for (int i = 0; i < N_COMANDOS; i++) {
     if (strcmp(cmd, COMANDOS_PERMITIDOS[i]) == 0) return true;
   }
@@ -111,10 +115,29 @@ void controlarCarga(bool encender) {
   forzarPublicacion = true;
 }
 
+// El LED de alerta se enciende si hay alerta de consumo O de temperatura
+void actualizarLedAlerta() {
+  digitalWrite(LED_ALERTA, (alerta || alertaTemp) ? HIGH : LOW);
+}
+
 void setAlerta(bool estado, const char* motivo) {
   alerta = estado;
   motivoAlerta = estado ? motivo : "";
-  digitalWrite(LED_ALERTA, estado ? HIGH : LOW);
+  actualizarLedAlerta();
+}
+
+// Alerta de temperatura con histéresis: se activa al superar el límite y se
+// desactiva recién cuando baja HISTERESIS_TEMP_C por debajo (evita parpadeos).
+void evaluarTemperatura(float temperatura, bool dhtOk) {
+  if (!dhtOk) return;
+  if (!alertaTemp && temperatura > limiteTemperatura) {
+    alertaTemp = true;
+    Serial.printf("[ALERTA] Temperatura alta: %.1f C > %.1f C\n", temperatura, limiteTemperatura);
+  } else if (alertaTemp && temperatura < limiteTemperatura - HISTERESIS_TEMP_C) {
+    alertaTemp = false;
+    Serial.println("[ALERTA] Temperatura normalizada");
+  }
+  actualizarLedAlerta();
 }
 
 unsigned long epochActual() {
@@ -180,6 +203,12 @@ void alRecibirMensaje(char* topic, byte* payload, unsigned int length) {
     if (!(nuevo >= LIMITE_MIN_W && nuevo <= LIMITE_MAX_W)) { responder("LIMITE", false, "fuera de rango (0.01 - 50 W)"); return; }
     limitePotencia = nuevo;
     responder("LIMITE", true, "limite actualizado");
+  } else if (strncmp(cmd, "LIMTEMP:", 8) == 0) {
+    float nuevo = atof(cmd + 8);
+    if (!(nuevo >= LIMITE_TEMP_MIN_C && nuevo <= LIMITE_TEMP_MAX_C)) { responder("LIMTEMP", false, "fuera de rango (0 - 60 C)"); return; }
+    limiteTemperatura = nuevo;
+    alertaTemp = false;              // se vuelve a evaluar con el nuevo límite
+    responder("LIMTEMP", true, "limite de temperatura actualizado");
   } else if (strcmp(cmd, "RESET_ENERGIA") == 0) {
     energiaWh = 0;
     responder(cmd, true, "energia reiniciada");
@@ -258,7 +287,7 @@ void setup() {
   clienteSeguro.setCACert(ROOT_CA);
   mqtt.setServer(MQTT_HOST, MQTT_PORT);
   mqtt.setCallback(alRecibirMensaje);
-  mqtt.setBufferSize(512);
+  mqtt.setBufferSize(768);
   mqtt.setKeepAlive(30);
 
   ultimoCalculoEnergia = millis();
@@ -324,10 +353,13 @@ void loop() {
   }
   // En modo AUTO la alerta queda activa hasta que el usuario reactive la carga (ON)
 
+  // ---------- Alerta de temperatura ----------
+  evaluarTemperatura(temperatura, dhtOk);
+
   // ---------- Monitor serie ----------
-  Serial.printf("T=%.1fC H=%.1f%% | V=%.2fV I=%.3fA P=%.3fW E=%.4fWh | Carga=%s Modo=%s Alerta=%s | WiFi=%s MQTT=%s\n",
+  Serial.printf("T=%.1fC H=%.1f%% | V=%.2fV I=%.3fA P=%.3fW E=%.4fWh | Carga=%s Modo=%s Alerta=%s TempAlta=%s | WiFi=%s MQTT=%s\n",
     temperatura, humedad, voltaje, corriente, potencia, energiaWh,
-    cargaActivada ? "ON" : "OFF", modoAuto ? "AUTO" : "MANUAL", alerta ? motivoAlerta : "no",
+    cargaActivada ? "ON" : "OFF", modoAuto ? "AUTO" : "MANUAL", alerta ? motivoAlerta : "no", alertaTemp ? "SI" : "no",
     WiFi.status() == WL_CONNECTED ? "ok" : "no", mqtt.connected() ? "ok" : "no");
 
   // ---------- Publicación ----------
@@ -337,16 +369,16 @@ void loop() {
   if (dhtOk) { dtostrf(temperatura, 0, 2, tempStr); dtostrf(humedad, 0, 2, humStr); }
   else       { strcpy(tempStr, "null"); strcpy(humStr, "null"); }
 
-  char json[480];
+  char json[640];
   snprintf(json, sizeof(json),
     "{\"temperatura\":%s,\"humedad\":%s,\"voltaje\":%.3f,\"corriente\":%.4f,"
     "\"potencia\":%.4f,\"potencia_prom\":%.4f,\"energia_wh\":%.5f,\"limite\":%.3f,\"carga_activa\":%s,"
     "\"modo\":\"%s\",\"alerta\":%s,\"alerta_motivo\":\"%s\",\"sensor_electrico\":%s,"
-    "\"sensor_ambiental\":%s,\"rssi\":%d,\"uptime\":%lu,\"ts\":%lu,\"fw\":\"%s\"}",
+    "\"sensor_ambiental\":%s,\"limite_temp\":%.1f,\"alerta_temp\":%s,\"rssi\":%d,\"uptime\":%lu,\"ts\":%lu,\"fw\":\"%s\"}",
     tempStr, humStr, voltaje, corriente, potencia, potenciaProm, energiaWh, limitePotencia,
     cargaActivada ? "true" : "false", modoAuto ? "AUTO" : "MANUAL",
     alerta ? "true" : "false", motivoAlerta, electricoOk ? "true" : "false",
-    dhtOk ? "true" : "false", WiFi.RSSI(), millis() / 1000, epochActual(), FIRMWARE_VERSION);
+    dhtOk ? "true" : "false", limiteTemperatura, alertaTemp ? "true" : "false", WiFi.RSSI(), millis() / 1000, epochActual(), FIRMWARE_VERSION);
 
   mqtt.publish(TOPIC_DATOS, json, true);   // retenido: el dashboard ve el último dato al entrar
 }
