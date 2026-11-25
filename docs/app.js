@@ -121,7 +121,15 @@
     });
 
     client.on("close", () => {
-      if (!entro) { restaurarBotonLogin(); return; }
+      if (!entro) {
+        if (!$("loginError").textContent) {
+          $("loginError").textContent = "No se pudo abrir la conexión segura (puerto 8084). " +
+            "La red puede estar bloqueándolo: prueben con los datos del celular o en Chrome.";
+        }
+        restaurarBotonLogin();
+        if (client) client.end(true);
+        return;
+      }
       $("ptBroker").className = "punto off"; $("txtBroker").textContent = "Sin broker";
     });
 
