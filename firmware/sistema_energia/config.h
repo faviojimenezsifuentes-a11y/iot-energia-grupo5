@@ -3,7 +3,7 @@
 //  CONFIGURACIÓN DEL SISTEMA (sin datos secretos)
 // =====================================================================
 
-#define FIRMWARE_VERSION "2.0.0"
+#define FIRMWARE_VERSION "2.1.0"
 
 // ---------- Pines ----------
 #define DHT_PIN      4      // DATA del DHT22
@@ -29,6 +29,7 @@
 #define LIMITE_MIN_W         0.01f   // rango permitido para cambios desde el dashboard
 #define LIMITE_MAX_W         50.0f
 #define INTERVALO_MS         2000    // lectura y publicación
+#define N_MUESTRAS           3       // tamaño del promedio móvil de potencia (3 x 2 s)
 #define CMD_MIN_INTERVALO_MS 300     // anti-spam: tiempo mínimo entre comandos
 #define CMD_MAX_LEN          24      // largo máximo aceptado de un comando
 #define WIFI_REINTENTO_MS    10000

@@ -45,7 +45,7 @@ flowchart LR
 | RF02 Monitoreo ambiental | DHT22: temperatura y humedad, con reintento y tolerancia a lecturas fallidas |
 | RF03 Transmisión inalámbrica | Wi-Fi + MQTT sobre TLS hacia un broker privado (EMQX Cloud) |
 | RF04 Visualización | Dashboard web con maqueta animada, indicadores, gráficas y reporte |
-| RF05/RF06 Sobreconsumo y alertas | Comparación con un límite configurable, alerta visual (LED + dashboard) e historial |
+| RF05/RF06 Sobreconsumo y alertas | Promedio móvil de potencia (arreglo de 3 lecturas) comparado con un límite configurable; alerta visual (LED + dashboard) e historial |
 | RF07 Control de dispositivos | Encender/apagar la luz desde el dashboard con confirmación (ACK) |
 | RF08 Automatización | Modo automático: corta la carga al superar el límite, incluso sin internet |
 | RNF06 Seguridad | Ver [SECURITY.md](SECURITY.md) |

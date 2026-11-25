@@ -61,6 +61,37 @@ unsigned long ultimoIntentoMqtt   = 0;
 unsigned long ultimoComando       = 0;
 bool forzarPublicacion = true;
 
+// ---------- Arreglos ----------
+// Lista blanca de comandos sin parámetros que acepta el ESP32
+const char* const COMANDOS_PERMITIDOS[] = { "ON", "OFF", "AUTO", "MANUAL", "RESET_ENERGIA" };
+const int N_COMANDOS = sizeof(COMANDOS_PERMITIDOS) / sizeof(COMANDOS_PERMITIDOS[0]);
+
+// Últimas lecturas de potencia: el promedio móvil evita que un pico aislado
+// (ruido al conmutar el relé) dispare una alerta falsa.
+float muestrasPotencia[N_MUESTRAS] = { 0 };
+int   indiceMuestra = 0;
+
+float promedioPotencia(float nueva) {
+  muestrasPotencia[indiceMuestra] = nueva;
+  indiceMuestra = (indiceMuestra + 1) % N_MUESTRAS;
+  float suma = 0;
+  for (int i = 0; i < N_MUESTRAS; i++) suma += muestrasPotencia[i];
+  return suma / N_MUESTRAS;
+}
+
+void reiniciarPromedio() {
+  for (int i = 0; i < N_MUESTRAS; i++) muestrasPotencia[i] = 0;
+  indiceMuestra = 0;
+}
+
+bool esComandoPermitido(const char* cmd) {
+  if (strncmp(cmd, "LIMITE:", 7) == 0) return true;
+  for (int i = 0; i < N_COMANDOS; i++) {
+    if (strcmp(cmd, COMANDOS_PERMITIDOS[i]) == 0) return true;
+  }
+  return false;
+}
+
 // =====================================================================
 //  Actuadores
 // =====================================================================
@@ -126,10 +157,13 @@ void alRecibirMensaje(char* topic, byte* payload, unsigned int length) {
   if (millis() - ultimoComando < CMD_MIN_INTERVALO_MS) { responder(cmd, false, "demasiados comandos seguidos"); return; }
   ultimoComando = millis();
 
-  // 4) Lista blanca
+  // 4) Lista blanca (arreglo COMANDOS_PERMITIDOS)
+  if (!esComandoPermitido(cmd)) { responder("DESCONOCIDO", false, "comando no permitido"); return; }
+
   if (strcmp(cmd, "ON") == 0) {
     if (modoAuto && !inaOk) { responder(cmd, false, "sin sensor electrico: use modo MANUAL"); return; }
     setAlerta(false, "");
+    reiniciarPromedio();
     controlarCarga(true);
     responder(cmd, true, "carga encendida");
   } else if (strcmp(cmd, "OFF") == 0) {
@@ -270,14 +304,15 @@ void loop() {
     potencia  = voltaje * corriente;                 // P = V x I
   }
   bool electricoOk = inaOk && isfinite(voltaje) && isfinite(corriente) && isfinite(potencia);
+  float potenciaProm = electricoOk ? promedioPotencia(potencia) : 0;
 
   unsigned long ahora = millis();
   if (electricoOk) energiaWh += potencia * ((ahora - ultimoCalculoEnergia) / 3600000.0f);
   ultimoCalculoEnergia = ahora;
 
   // ---------- Automatización y failsafe ----------
-  if (electricoOk && potencia > limitePotencia) {
-    if (!alerta) Serial.printf("[ALERTA] Sobreconsumo: %.3f W > %.3f W\n", potencia, limitePotencia);
+  if (electricoOk && potenciaProm > limitePotencia) {
+    if (!alerta) Serial.printf("[ALERTA] Sobreconsumo: promedio %.3f W > %.3f W\n", potenciaProm, limitePotencia);
     setAlerta(true, "sobreconsumo");
     if (modoAuto && cargaActivada) controlarCarga(false);
   } else if (modoAuto && cargaActivada && !electricoOk) {
@@ -305,10 +340,10 @@ void loop() {
   char json[480];
   snprintf(json, sizeof(json),
     "{\"temperatura\":%s,\"humedad\":%s,\"voltaje\":%.3f,\"corriente\":%.4f,"
-    "\"potencia\":%.4f,\"energia_wh\":%.5f,\"limite\":%.3f,\"carga_activa\":%s,"
+    "\"potencia\":%.4f,\"potencia_prom\":%.4f,\"energia_wh\":%.5f,\"limite\":%.3f,\"carga_activa\":%s,"
     "\"modo\":\"%s\",\"alerta\":%s,\"alerta_motivo\":\"%s\",\"sensor_electrico\":%s,"
     "\"sensor_ambiental\":%s,\"rssi\":%d,\"uptime\":%lu,\"ts\":%lu,\"fw\":\"%s\"}",
-    tempStr, humStr, voltaje, corriente, potencia, energiaWh, limitePotencia,
+    tempStr, humStr, voltaje, corriente, potencia, potenciaProm, energiaWh, limitePotencia,
     cargaActivada ? "true" : "false", modoAuto ? "AUTO" : "MANUAL",
     alerta ? "true" : "false", motivoAlerta, electricoOk ? "true" : "false",
     dhtOk ? "true" : "false", WiFi.RSSI(), millis() / 1000, epochActual(), FIRMWARE_VERSION);
