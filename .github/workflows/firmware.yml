@@ -14,7 +14,7 @@ jobs:
   compilar:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Usar credenciales de ejemplo (las reales nunca están en el repo)
         run: cp firmware/sistema_energia/secrets.example.h firmware/sistema_energia/secrets.h
