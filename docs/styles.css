@@ -1,0 +1,155 @@
+/*
+  VOICE: tablero eléctrico doméstico, claro y confiable
+  IDEA: la casa de la maqueta como protagonista; su foco se enciende igual que el real
+  PICTURE: casa en SVG con foco y halo + medidor potencia/límite
+  COLOUR: tinta azul profunda, amarillo eléctrico para energía, rojo solo para alertas
+  TYPE: sistema (sin fuentes externas, para una CSP estricta)
+*/
+:root {
+  color-scheme: light dark;
+  --bg: #f3f5f8; --tarjeta: #ffffff; --tinta: #0f1d2b; --suave: #5a6b7d; --linea: #dde3ea;
+  --energia: #f2b705; --energia-suave: #fff3c4; --cielo: #2a8fd6; --ok: #1d9e6a; --mal: #d64045;
+  --muro: #e8edf2; --techo: #31475e; --apagado: #c7d0da;
+  --radio: 14px;
+  font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0c1620; --tarjeta: #13212e; --tinta: #e9f0f6; --suave: #9db0c2; --linea: #223446;
+    --energia: #ffd23f; --energia-suave: #3a3210; --cielo: #5bb4f0; --ok: #3ddc97; --mal: #ff5d62;
+    --muro: #1d2f40; --techo: #4e6b88; --apagado: #3a4b5c;
+  }
+}
+* { box-sizing: border-box; min-width: 0; }
+body { margin: 0; background: var(--bg); color: var(--tinta); overflow-x: clip; }
+[hidden] { display: none !important; }
+h1 { font-size: 22px; line-height: 1.1; margin: 0; }
+h2 { font-size: 17px; margin: 0 0 12px; }
+.etq { color: var(--suave); font-size: 13px; }
+.nota { color: var(--suave); font-size: 13px; margin: 10px 0 0; }
+.error { color: var(--mal); font-size: 14px; min-height: 1.2em; margin: 6px 0; }
+
+/* ---------- Botones e inputs ---------- */
+.btn { font: 600 15px/1 inherit; font-family: inherit; min-height: 44px; padding: 0 18px; border-radius: 10px;
+  border: 1px solid var(--linea); background: var(--bg); color: var(--tinta); cursor: pointer; }
+.btn:hover { border-color: var(--suave); }
+.btn:disabled { opacity: .5; cursor: wait; }
+.btn.primario { background: var(--tinta); color: var(--bg); border-color: var(--tinta); }
+.btn.ancho { width: 100%; }
+.btn.chico { min-height: 34px; padding: 0 12px; font-size: 13px; }
+.btn.sutil { background: transparent; width: 100%; margin-top: 14px; }
+.btn.encender { background: var(--energia); border-color: var(--energia); color: #1b1400; }
+.btn.apagar { background: transparent; }
+button:focus-visible, input:focus-visible { outline: 3px solid var(--cielo); outline-offset: 2px; }
+input[type=text], input[type=password], input[type=number] {
+  font: 16px inherit; font-family: inherit; width: 100%; min-height: 44px; padding: 0 12px; border-radius: 10px;
+  border: 1px solid var(--linea); background: var(--bg); color: var(--tinta); }
+label { display: block; font-size: 14px; font-weight: 600; margin: 14px 0 6px; }
+label.check { display: flex; gap: 8px; align-items: center; font-weight: 400; color: var(--suave); }
+
+/* ---------- Logo ---------- */
+.m-casa { fill: var(--tinta); }
+.m-rayo { fill: var(--energia); }
+.candado { display: inline-block; width: 10px; height: 8px; background: currentColor; border-radius: 2px;
+  position: relative; margin-right: 6px; vertical-align: -1px; }
+.candado::before { content: ""; position: absolute; left: 2px; top: -5px; width: 6px; height: 6px;
+  border: 2px solid currentColor; border-bottom: 0; border-radius: 4px 4px 0 0; box-sizing: border-box; }
+
+/* ---------- Login ---------- */
+.login { min-height: 100vh; display: grid; place-items: center; padding: 24px 16px;
+  background: linear-gradient(160deg, var(--bg) 55%, var(--energia-suave)); }
+.login-card { width: min(420px, 100%); background: var(--tarjeta); border: 1px solid var(--linea);
+  border-radius: 18px; padding: 28px; }
+.marca { display: flex; gap: 14px; align-items: center; margin-bottom: 8px; }
+.marca p { margin: 4px 0 0; color: var(--suave); font-size: 14px; }
+.login-card .btn { margin-top: 6px; }
+
+/* ---------- App ---------- */
+.cabecera { display: flex; flex-wrap: wrap; gap: 12px; justify-content: space-between; align-items: center;
+  padding: 14px max(4vw, 16px); background: var(--tarjeta); border-bottom: 1px solid var(--linea);
+  position: sticky; top: 0; z-index: 5; }
+.cab-titulo { display: flex; gap: 12px; align-items: center; }
+.cab-titulo p { margin: 2px 0 0; color: var(--suave); font-size: 13px; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.chip { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; padding: 6px 10px;
+  border: 1px solid var(--linea); border-radius: 99px; white-space: nowrap; }
+.chip.seguro { color: var(--ok); }
+.punto { width: 9px; height: 9px; border-radius: 50%; background: var(--apagado); }
+.punto.on { background: var(--ok); } .punto.off { background: var(--mal); }
+
+main { max-width: 1240px; margin: 0 auto; padding: 20px max(4vw, 16px) 48px; display: grid; gap: 18px; }
+.tarjeta { background: var(--tarjeta); border: 1px solid var(--linea); border-radius: var(--radio); padding: 18px; }
+.tarjeta-cab { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; align-items: baseline; }
+.banner { background: var(--mal); color: #fff; padding: 14px 18px; border-radius: var(--radio); font-weight: 600; }
+
+/* Hero: casa + KPIs */
+.hero { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 18px; }
+.maqueta svg { width: 100%; height: auto; max-height: 300px; display: block; margin: 0 auto; }
+.c-muro { fill: var(--muro); } .c-techo { fill: var(--techo); } .c-puerta { fill: var(--techo); opacity: .55; }
+.c-ventana { fill: var(--apagado); transition: fill .4s; } .c-cable { stroke: var(--suave); stroke-width: 2; }
+.c-foco { fill: var(--apagado); transition: fill .4s; } .c-rosca { fill: var(--suave); }
+#casaHalo { opacity: 0; transition: opacity .5s; }
+.luz-on #casaHalo { opacity: 1; }
+.luz-on .c-foco { fill: var(--energia); }
+.luz-on .c-ventana { fill: var(--energia-suave); }
+.maqueta-pie { display: flex; flex-wrap: wrap; gap: 16px; justify-content: space-between; align-items: end; margin-top: 8px; }
+.maqueta-pie b { display: block; font-size: 22px; }
+.medidor { flex: 1 1 180px; max-width: 280px; }
+.medidor-barra { position: relative; height: 12px; border-radius: 99px; background: var(--bg); border: 1px solid var(--linea); overflow: hidden; }
+#medidorRelleno { height: 100%; width: 0; background: var(--energia); transition: width .5s, background .3s; }
+#medidorRelleno.excede { background: var(--mal); }
+#medidorLimite { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--mal); left: 66.6%; }
+
+.kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; align-content: start; }
+.kpi { background: var(--tarjeta); border: 1px solid var(--linea); border-radius: var(--radio); padding: 16px; }
+.kpi b { display: block; font-size: clamp(22px, 2.6vw, 32px); line-height: 1.2; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.kpi small { color: var(--suave); font-size: 13px; }
+.kpi.excede b { color: var(--mal); }
+
+.rejilla { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 18px; }
+.rejilla > .tarjeta { display: flex; flex-direction: column; }
+.fig { position: relative; height: 250px; flex: 1 0 250px; }
+.fig > svg { position: absolute; inset: 0; width: 100%; height: 100%; color: var(--suave); }
+.leyenda { font-size: 13px; color: var(--suave); display: flex; gap: 6px 14px; flex-wrap: wrap; align-items: center; }
+.leyenda i { display: inline-block; width: 14px; height: 3px; border-radius: 2px; margin-right: -8px; vertical-align: middle; }
+.l-pot { background: var(--energia); } .l-lim { background: var(--mal); } .l-tem { background: #ff8a3d; } .l-hum { background: var(--cielo); }
+
+/* Gráficas: estilos por clase (la CSP no permite estilos en línea) */
+.g-lim { stroke: var(--mal); stroke-width: 2; stroke-dasharray: 6 5; }
+.g-linea { fill: none; stroke-width: 2.5; stroke-linejoin: round; }
+.g-area { opacity: .15; stroke: none; }
+.g-linea.s-pot { stroke: var(--energia); } .g-area.s-pot, .g-punto.s-pot { fill: var(--energia); }
+.g-linea.s-tem { stroke: #ff8a3d; } .g-punto.s-tem { fill: #ff8a3d; }
+.g-linea.s-hum { stroke: var(--cielo); } .g-punto.s-hum { fill: var(--cielo); }
+
+/* Control */
+.control .interruptor { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+.segmento { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--linea); border-radius: 10px; overflow: hidden; margin: 6px 0 4px; }
+.seg { font: 600 14px inherit; font-family: inherit; min-height: 42px; border: 0; background: transparent; color: var(--suave); cursor: pointer; }
+.seg.activo { background: var(--tinta); color: var(--bg); }
+.fila { display: flex; gap: 8px; }
+.fila input { flex: 1; }
+
+/* Reporte e historial */
+.reporte { width: 100%; border-collapse: collapse; font-size: 14px; margin-bottom: 14px; }
+.reporte td { padding: 8px 0; border-bottom: 1px solid var(--linea); }
+.reporte td:last-child { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.log { list-style: none; margin: 0; padding: 0; max-height: 280px; overflow: auto; font-size: 14px; }
+.log li { display: grid; grid-template-columns: 78px 1fr; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--linea); }
+.log time { color: var(--suave); font-variant-numeric: tabular-nums; }
+.log li.mal span { color: var(--mal); font-weight: 600; }
+.log li.ok span { color: var(--ok); }
+
+.toast { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); background: var(--tinta); color: var(--bg);
+  padding: 12px 18px; border-radius: 12px; font-size: 14px; max-width: calc(100% - 32px); z-index: 10; }
+.toast.mal { background: var(--mal); color: #fff; }
+
+@media (max-width: 900px) {
+  .hero, .rejilla { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 520px) {
+  .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .fig { height: 210px; }
+  .cabecera h1 { font-size: 18px; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }

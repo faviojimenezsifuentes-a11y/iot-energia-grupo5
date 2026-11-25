@@ -1,0 +1,15 @@
+# Credenciales: NUNCA subir
+secrets.h
+**/secrets.h
+.env
+
+# Sistema / editores
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Compilación
+build/
+*.bin
+*.elf

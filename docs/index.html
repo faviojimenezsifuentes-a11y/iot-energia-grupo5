@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src wss://*.emqxsl.com:8084 wss://*.hivemq.cloud:8884; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<title>Energía Casa · IoT Grupo 5</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- ===================== LOGIN ===================== -->
+<section id="vistaLogin" class="login">
+  <form id="formLogin" class="login-card" autocomplete="on" novalidate>
+    <div class="marca">
+      <svg viewBox="0 0 40 40" width="44" height="44" aria-hidden="true"><path d="M20 3 L5 15 V36 H35 V15 Z" class="m-casa"/><path d="M22 12 L14 23 H20 L18 32 L27 20 H21 Z" class="m-rayo"/></svg>
+      <div>
+        <h1>Energía Casa</h1>
+        <p>Monitoreo y control del consumo · IoT Grupo 5</p>
+      </div>
+    </div>
+
+    <label for="inHost">Dirección del broker</label>
+    <input id="inHost" name="host" type="text" inputmode="url" spellcheck="false" placeholder="xxxx.emqxsl.com" required>
+
+    <label for="inUser">Usuario</label>
+    <input id="inUser" name="username" type="text" autocomplete="username" spellcheck="false" required>
+
+    <label for="inPass">Contraseña</label>
+    <input id="inPass" name="password" type="password" autocomplete="current-password" required>
+
+    <label class="check"><input id="inRecordar" type="checkbox"> Recordar broker y usuario en este dispositivo</label>
+
+    <p id="loginError" class="error" role="alert"></p>
+    <button id="btnLogin" type="submit" class="btn primario ancho">Conectar de forma segura</button>
+    <p class="nota"><span class="candado" aria-hidden="true"></span> Conexión cifrada (TLS). La contraseña no se guarda.</p>
+  </form>
+</section>
+
+<!-- ===================== APP ===================== -->
+<div id="vistaApp" class="app" hidden>
+  <header class="cabecera">
+    <div class="cab-titulo">
+      <svg viewBox="0 0 40 40" width="34" height="34" aria-hidden="true"><path d="M20 3 L5 15 V36 H35 V15 Z" class="m-casa"/><path d="M22 12 L14 23 H20 L18 32 L27 20 H21 Z" class="m-rayo"/></svg>
+      <div>
+        <h1>Energía Casa</h1>
+        <p id="txtUltima">Esperando datos…</p>
+      </div>
+    </div>
+    <div class="chips">
+      <span class="chip"><span class="punto" id="ptBroker"></span><span id="txtBroker">Broker</span></span>
+      <span class="chip"><span class="punto" id="ptEsp"></span><span id="txtEsp">ESP32</span></span>
+      <span class="chip seguro"><span class="candado" aria-hidden="true"></span>TLS</span>
+      <button id="btnSalir" class="btn chico">Cerrar sesión</button>
+    </div>
+  </header>
+
+  <main>
+    <div id="bannerAlerta" class="banner" role="alert" hidden></div>
+
+    <section class="hero">
+      <div class="tarjeta maqueta">
+        <svg id="svgCasa" viewBox="0 0 320 240" role="img" aria-label="Estado de la luz de la vivienda">
+          <defs>
+            <radialGradient id="halo"><stop offset="0" stop-color="#ffd23f" stop-opacity=".75"/><stop offset="1" stop-color="#ffd23f" stop-opacity="0"/></radialGradient>
+          </defs>
+          <circle id="casaHalo" cx="160" cy="118" r="78" fill="url(#halo)"/>
+          <path d="M160 18 L28 112 H52 V222 H268 V112 H292 Z" class="c-muro"/>
+          <path d="M160 18 L28 112 H292 Z" class="c-techo"/>
+          <rect x="138" y="160" width="44" height="62" rx="3" class="c-puerta"/>
+          <rect x="72" y="140" width="44" height="36" rx="3" class="c-ventana" id="vent1"/>
+          <rect x="204" y="140" width="44" height="36" rx="3" class="c-ventana" id="vent2"/>
+          <line x1="160" y1="80" x2="160" y2="100" class="c-cable"/>
+          <circle id="casaFoco" cx="160" cy="114" r="14" class="c-foco"/>
+          <rect x="153" y="98" width="14" height="6" rx="1" class="c-rosca"/>
+        </svg>
+        <div class="maqueta-pie">
+          <div>
+            <span class="etq">Luz de la vivienda</span>
+            <b id="txtCarga">--</b>
+          </div>
+          <div class="medidor" aria-label="Potencia frente al límite">
+            <div class="medidor-barra"><div id="medidorRelleno"></div><div id="medidorLimite"></div></div>
+            <span class="etq" id="txtMedidor">-- de -- W</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="kpis">
+        <div class="kpi" id="kPot"><span class="etq">Potencia</span><b id="vPot">--</b><small id="dPot"></small></div>
+        <div class="kpi"><span class="etq">Corriente</span><b id="vCor">--</b></div>
+        <div class="kpi"><span class="etq">Voltaje</span><b id="vVol">--</b></div>
+        <div class="kpi"><span class="etq">Energía acumulada</span><b id="vEne">--</b></div>
+        <div class="kpi"><span class="etq">Temperatura</span><b id="vTem">--</b></div>
+        <div class="kpi"><span class="etq">Humedad</span><b id="vHum">--</b></div>
+      </div>
+    </section>
+
+    <section class="rejilla">
+      <div class="tarjeta">
+        <div class="tarjeta-cab"><h2>Potencia en tiempo real</h2><span class="leyenda"><i class="l-pot"></i>Potencia <i class="l-lim"></i>Límite</span></div>
+        <div class="fig"><svg id="chPot"></svg></div>
+      </div>
+
+      <div class="tarjeta control">
+        <h2>Control</h2>
+        <div class="interruptor">
+          <button id="bOn" class="btn encender">Encender</button>
+          <button id="bOff" class="btn apagar">Apagar</button>
+        </div>
+
+        <span class="etq">Modo</span>
+        <div class="segmento" role="group" aria-label="Modo de operación">
+          <button id="bAuto" class="seg">Automático</button>
+          <button id="bManual" class="seg">Manual</button>
+        </div>
+
+        <label class="etq" for="iLim">Límite de potencia (W)</label>
+        <div class="fila">
+          <input id="iLim" type="number" min="0.01" max="50" step="0.01" inputmode="decimal">
+          <button id="bLim" class="btn">Fijar</button>
+        </div>
+        <p id="limError" class="error"></p>
+
+        <button id="bReset" class="btn sutil">Reiniciar energía acumulada</button>
+        <p class="nota">En automático la luz se apaga sola al superar el límite. Para reactivarla, pulsen “Encender”.</p>
+      </div>
+    </section>
+
+    <section class="rejilla">
+      <div class="tarjeta">
+        <div class="tarjeta-cab"><h2>Condiciones ambientales</h2><span class="leyenda"><i class="l-tem"></i>Temperatura °C <i class="l-hum"></i>Humedad %</span></div>
+        <div class="fig"><svg id="chAmb"></svg></div>
+      </div>
+
+      <div class="tarjeta">
+        <h2>Reporte de la sesión</h2>
+        <table class="reporte">
+          <tr><td>Lecturas recibidas</td><td id="rN">0</td></tr>
+          <tr><td>Potencia promedio</td><td id="rProm">--</td></tr>
+          <tr><td>Potencia máxima</td><td id="rMax">--</td></tr>
+          <tr><td>Alertas de sobreconsumo</td><td id="rAl">0</td></tr>
+          <tr><td>Temperatura promedio</td><td id="rTem">--</td></tr>
+          <tr><td>Señal Wi-Fi</td><td id="rRssi">--</td></tr>
+          <tr><td>Firmware</td><td id="rFw">--</td></tr>
+        </table>
+        <button id="bCsv" class="btn ancho">Descargar CSV</button>
+      </div>
+    </section>
+
+    <section class="tarjeta">
+      <h2>Historial de eventos</h2>
+      <ol id="log" class="log"></ol>
+    </section>
+  </main>
+
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+</div>
+
+<script src="config.js"></script>
+<script src="vendor/mqtt.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

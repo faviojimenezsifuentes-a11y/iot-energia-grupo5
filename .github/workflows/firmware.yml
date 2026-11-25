@@ -1,0 +1,42 @@
+name: Compilar firmware ESP32
+
+on:
+  push:
+    paths: ["firmware/**", ".github/workflows/firmware.yml"]
+  pull_request:
+    paths: ["firmware/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compilar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Usar credenciales de ejemplo (las reales nunca están en el repo)
+        run: cp firmware/sistema_energia/secrets.example.h firmware/sistema_energia/secrets.h
+
+      - name: Verificar que no se subieron credenciales reales
+        run: |
+          if git ls-files | grep -E '(^|/)secrets\.h$'; then
+            echo "::error::secrets.h está en el repositorio. Bórrenlo y cambien las contraseñas."
+            exit 1
+          fi
+
+      - uses: arduino/compile-sketches@v1
+        with:
+          fqbn: esp32:esp32:esp32
+          platforms: |
+            - name: esp32:esp32
+              source-url: https://espressif.github.io/arduino-esp32/package_esp32_index.json
+          sketch-paths: |
+            - firmware/sistema_energia
+          libraries: |
+            - name: DHT sensor library
+            - name: Adafruit Unified Sensor
+            - name: Adafruit INA219
+            - name: PubSubClient
+          enable-warnings-report: true
